@@ -143,6 +143,7 @@ uv run fast-bert-benchmark --model-id ParisNeo/TinyBert-frugal-ai-text-classific
 | PyTorch Original       | PyTorch                | Base Bert model                             |
 | PyTorch Quantized      | PyTorch + torchao      | Int8 dynamic activation/weight quantization |
 | ONNX Runtime           | ONNX Runtime           | Exported ONNX model                         |
+| ONNX Runtime Optimized | ONNX Runtime + Optimum | Graph optimizations (O99)                   |
 | ONNX Runtime Quantized | ONNX Runtime + Optimum | AVX512 VNNI dynamic quantization            |
 
 ## Benchmark Results
@@ -161,17 +162,17 @@ Results from local machine:
 | ---------------------- | -------- | --------- | ------ | -------- |
 | PyTorch Original       | 0.9106   | 0.9110    | 0.9106 | 0.9105   |
 | PyTorch Quantized      | 0.9083   | 0.9087    | 0.9083 | 0.9082   |
-| ONNX Runtime           | 0.9106   | 0.9110    | 0.9106 | 0.9105   |
 | ONNX Runtime Quantized | 0.9071   | 0.9075    | 0.9071 | 0.9071   |
 
-**Benchmark (1000 samples, 100 warmup runs):**
+**Benchmark (100 samples, 10 warmup runs):**
 
 | Framework              | Size (MB) | Latency (ms) | Std (ms) | IPS    |
 | ---------------------- | --------- | ------------ | -------- | ------ |
-| PyTorch Original       | 255.43    | 48.43        | 2.65     | 20.65  |
-| PyTorch Quantized      | 132.44    | 28.09        | 1.86     | 35.60  |
-| ONNX Runtime           | 255.52    | 14.96        | 3.58     | 66.86  |
-| ONNX Runtime Quantized | 64.25     | 6.47         | 2.83     | 154.44 |
+| PyTorch Original       | 255.45    | 45.73        | 2.87     | 21.87  |    
+| PyTorch Quantized      | 132.44    | 25.90        | 1.78     | 38.61  |    
+| ONNX Runtime           | 255.52    | 15.81        | 2.84     | 63.23  |    
+| ONNX Runtime Quantized | 64.25     | 4.11         | 0.49     | 243.28 |    
+| ONNX Runtime Optimized | 255.44    | 9.30         | 0.95     | 107.55 | 
 
 ### TinyBERT (`ParisNeo/TinyBert-frugal-ai-text-classification`)
 
@@ -181,7 +182,6 @@ Results from local machine:
 | ---------------------- | -------- | --------- | ------ | -------- |
 | PyTorch Original       | 0.8031   | 0.8037    | 0.8031 | 0.8029   |
 | PyTorch Quantized      | 0.7982   | 0.8000    | 0.7982 | 0.7974   |
-| ONNX Runtime           | 0.8031   | 0.8037    | 0.8031 | 0.8029   |
 | ONNX Runtime Quantized | 0.5176   | 0.6608    | 0.5176 | 0.4628   |
 
 > ⚠️ **Note**: ONNX Runtime Quantized shows significant accuracy degradation for TinyBERT (-28.55% accuracy). This is likely due to the smaller model being more sensitive to quantization.
@@ -190,7 +190,8 @@ Results from local machine:
 
 | Framework              | Size (MB) | Latency (ms) | Std (ms) | IPS    |
 | ---------------------- | --------- | ------------ | -------- | ------ |
-| PyTorch Original       | 54.76     | 5.70         | 0.68     | 175.59 |
-| PyTorch Quantized      | 41.53     | 9.57         | 0.77     | 104.45 |
-| ONNX Runtime           | 54.82     | 2.13         | 0.45     | 469.30 |
-| ONNX Runtime Quantized | 13.88     | 1.37         | 0.17     | 731.84 |
+| PyTorch Original       | 54.78     | 5.28         | 0.71     | 189.56 |
+| PyTorch Quantized      | 41.53     | 10.04        | 1.52     | 99.62  |
+| ONNX Runtime           | 54.82     | 1.84         | 0.54     | 544.20 |
+| ONNX Runtime Quantized | 13.88     | 1.01         | 0.18     | 988.73 |
+| ONNX Runtime Optimized | 54.77     | 1.47         | 0.30     | 686.50 |

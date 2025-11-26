@@ -17,6 +17,7 @@ PYTORCH_QUANTIZED_FILE = "model_quantized.pth"
 ONNX_DIR = "onnx"
 ONNX_ORIGINAL_FILE = "model.onnx"
 ONNX_QUANTIZED_FILE = "model_quantized.onnx"
+ONNX_OPTIMIZED_FILE = "model_optimized.onnx"
 
 # Environment setup
 os.environ["TF_ENABLE_ONEDNN_OPTS"] = "0"
@@ -42,7 +43,7 @@ def get_file_size(path: Path) -> float:
 
 
 def load_pytorch(
-    is_quantized: bool, model_id: str
+    model_id: str, is_quantized: bool = False
 ) -> tuple[AutoModelForSequenceClassification, AutoTokenizer, float] | None:
     """Load PyTorch model (original or quantized) from disk."""
     models_dir = get_models_dir(model_id)
@@ -66,16 +67,24 @@ def load_pytorch(
     return model, tokenizer, get_file_size(weights_path)
 
 def load_onnx(
-    is_quantized: bool, model_id: str
+    model_id: str, is_quantized: bool = False, is_optimized: bool = False
 ) -> tuple[ORTModelForSequenceClassification, AutoTokenizer, float] | None:
-    """Load ONNX model (original or quantized) from disk."""
+    """Load ONNX model (original, quantized, or optimized) from disk."""
     models_dir = get_models_dir(model_id)
     onnx_dir = models_dir / ONNX_DIR
-    onnx_file = ONNX_QUANTIZED_FILE if is_quantized else ONNX_ORIGINAL_FILE
+    
+    # Determine which file to load based on optimization and quantization flags
+    if is_optimized:
+        onnx_file = ONNX_OPTIMIZED_FILE
+    elif is_quantized:
+        onnx_file = ONNX_QUANTIZED_FILE
+    else:
+        onnx_file = ONNX_ORIGINAL_FILE
+    
     onnx_path = onnx_dir / onnx_file
     if not onnx_path.exists():
         return None
-    print(f"Loading ONNX model from {onnx_path} (Quantized: {is_quantized})")
+    print(f"Loading ONNX model from {onnx_path} (Optimized: {is_optimized}, Quantized: {is_quantized})")
 
     tokenizer = AutoTokenizer.from_pretrained(onnx_dir)
     model = ORTModelForSequenceClassification.from_pretrained(

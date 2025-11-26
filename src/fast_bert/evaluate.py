@@ -201,10 +201,9 @@ def main() -> None:
     model_id = args.model_id
 
     tasks = {
-        "PyTorch Original": lambda: load_pytorch(is_quantized=False, model_id=model_id),
-        "PyTorch Quantized": lambda: load_pytorch(is_quantized=True, model_id=model_id),
-        "ONNX Runtime": lambda: load_onnx(is_quantized=False, model_id=model_id),
-        "ONNX Runtime Quantized": lambda: load_onnx(is_quantized=True, model_id=model_id),
+        "PyTorch Original": lambda: load_pytorch( model_id=model_id, is_quantized=False),
+        "PyTorch Quantized": lambda: load_pytorch(model_id=model_id, is_quantized=True),
+        "ONNX Runtime Quantized": lambda: load_onnx(model_id=model_id, is_quantized=True),
     }
 
     results = [

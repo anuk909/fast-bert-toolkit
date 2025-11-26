@@ -1,13 +1,18 @@
 import argparse
 
 import torch
-from optimum.onnxruntime import ORTModelForSequenceClassification, ORTQuantizer
-from optimum.onnxruntime.configuration import AutoQuantizationConfig
+from optimum.onnxruntime import (
+    ORTModelForSequenceClassification,
+    ORTOptimizer,
+    ORTQuantizer,
+)
+from optimum.onnxruntime.configuration import AutoOptimizationConfig, AutoQuantizationConfig
 from torchao.quantization import Int8DynamicActivationInt8WeightConfig, quantize_
 from transformers import AutoModelForSequenceClassification, AutoTokenizer
 
 from fast_bert.config import (
     ONNX_DIR,
+    ONNX_OPTIMIZED_FILE,
     ONNX_ORIGINAL_FILE,
     ONNX_QUANTIZED_FILE,
     PYTORCH_DIR,
@@ -73,10 +78,10 @@ def create_pytorch_models(model_id: str) -> None:
     print(f"Saved quantized model, Size: {get_file_size(weights_path):.2f} MB")
 
 
-def create_onnx_quantized(model_id: str) -> None:
-    """Create original and quantized ONNX models."""
+def create_onnx_models(model_id: str) -> None:
+    """Create original, quantized and optimized ONNX models."""
     print("\n" + "=" * 60)
-    print("Creating ONNX Models (Original & Quantized)")
+    print("Creating ONNX Models (Original, Quantized, Optimized)")
     print("=" * 60)
 
     models_dir = get_models_dir(model_id)
@@ -93,19 +98,26 @@ def create_onnx_quantized(model_id: str) -> None:
     tokenizer = AutoTokenizer.from_pretrained(model_id)
     tokenizer.save_pretrained(onnx_dir)
 
-    # Quantize (saves to same directory with different filename)
+    # Quantize original model
     print("Quantizing ONNX model (AVX512 VNNI dynamic)...")
     quantizer = ORTQuantizer.from_pretrained(model)
     dq_config = AutoQuantizationConfig.avx512_vnni(is_static=False, per_channel=False)
     quantizer.quantize(save_dir=onnx_dir, quantization_config=dq_config)
     print(f"  Saved quantized model, Size: {get_file_size(onnx_dir / ONNX_QUANTIZED_FILE):.2f} MB")
 
+    # Optimize original model (O2: basic and extended optimizations, transformers-specific fusions)
+    print("Optimizing ONNX model (O2: transformers-specific fusions)...")
+    optimizer = ORTOptimizer.from_pretrained(model)
+    optimization_config = AutoOptimizationConfig.O2()
+    optimizer.optimize(save_dir=onnx_dir, optimization_config=optimization_config)
+    print(f"  Saved optimized model, Size: {get_file_size(onnx_dir / ONNX_OPTIMIZED_FILE):.2f} MB")
+
 
 def main() -> None:
     """Run all quantization pipelines."""
     args = parse_args()
     create_pytorch_models(args.model_id)
-    create_onnx_quantized(args.model_id)
+    create_onnx_models(args.model_id)
     print("\n" + "=" * 60)
     print("All models created successfully!")
     print("=" * 60)
