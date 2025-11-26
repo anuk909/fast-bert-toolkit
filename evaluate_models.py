@@ -1,7 +1,6 @@
 import argparse
 from typing import Any
 
-import numpy as np
 import torch
 from datasets import load_dataset
 from sklearn.metrics import (
@@ -23,20 +22,30 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument(
         "--model-id",
         type=str,
-        default="distilbert-base-uncased-finetuned-sst-2-english",
-        help="HuggingFace model ID (default: distilbert-base-uncased-finetuned-sst-2-english)",
+        default=None,
+        help="HuggingFace model ID (e.g., 'ParisNeo/TinyBert-frugal-ai-text-classification'). "
+             "If provided, loads models from a directory based on the model name.",
     )
     parser.add_argument(
         "--dataset",
         type=str,
-        default="glue",
-        help="Dataset name to load from HuggingFace (default: glue)",
+        help="Dataset name to load from HuggingFace",
     )
     parser.add_argument(
         "--dataset-config",
         type=str,
-        default="sst2",
-        help="Dataset configuration/subset name (default: sst2)",
+        default=None,
+        help="Dataset configuration/subset name",
+    )
+    parser.add_argument(
+        "--dataset-split",
+        type=str,
+        help="Dataset split name",
+    )
+    parser.add_argument(
+        "--dataset-input-column",
+        type=str,
+        help="Input column name in the dataset",
     )
     parser.add_argument(
         "--max-samples",
@@ -44,24 +53,47 @@ def parse_args() -> argparse.Namespace:
         default=None,
         help="Maximum number of samples to evaluate (default: None = full validation set)",
     )
+    parser.add_argument(
+        "--normalize-labels",
+        action="store_true",
+        help="Extract numeric prefix from labels (e.g., '0_not_relevant' -> 0)",
+    )
     return parser.parse_args()
 
 
-def load_sst2_validation(
-    dataset_name: str, dataset_config: str, max_samples: int | None = None
+def load_samples_from_dataset(
+    dataset_name: str,
+    dataset_config: str | None,
+    input_column: str,
+    split: str,
+    max_samples: int | None = None,
+    normalize_labels: bool = False,
 ) -> tuple[list[str], list[int]]:
-    """Load SST-2 validation dataset."""
+    """Load samples from a dataset.
+    
+    Returns:
+        texts: List of input texts
+        labels: List of integer labels
+    """
     print(f"Loading {dataset_name}/{dataset_config} validation dataset...")
-    dataset = load_dataset(dataset_name, dataset_config, split="validation")
+    dataset = load_dataset(dataset_name, dataset_config, split=split)
 
-    texts = list(dataset["sentence"])
+    texts = list(dataset[input_column])
     labels = list(dataset["label"])
 
     if max_samples is not None:
         texts = texts[:max_samples]
         labels = labels[:max_samples]
 
-    print(f"Loaded {len(texts)} samples")
+    # Convert labels to integers
+    if normalize_labels:
+        # Extract numeric prefix from labels like "0_not_relevant" -> 0
+        labels = [int(str(label).split("_")[0]) for label in labels]
+        print(f"Normalized labels from prefix (e.g., '{labels[0]}' -> {labels[0]})")
+    else:
+        labels = [int(label) for label in labels]
+
+    print(f"Loaded {len(texts)} samples with {len(set(labels))} classes")
     return texts, labels
 
 
@@ -76,15 +108,13 @@ def predict(
             inputs = tokenizer(
                 text,
                 return_tensors="pt",
+                truncation=True,
+                max_length=model.config.max_position_embeddings,
             )
 
             outputs = model(**inputs)
-            logits = outputs.logits
-
-            # Handle both torch tensors and numpy arrays
-            logits_np = logits.numpy() if hasattr(logits, "numpy") else logits
-            pred = np.argmax(logits_np, axis=1).item()
-            predictions.append(pred)
+            predicted_class = outputs.logits.argmax(-1).item()
+            predictions.append(predicted_class)
 
     return predictions
 
@@ -111,9 +141,9 @@ def evaluate_model(
     return {
         "Model": name,
         "Accuracy": accuracy_score(labels, predictions),
-        "Precision": precision_score(labels, predictions, average="binary"),
-        "Recall": recall_score(labels, predictions, average="binary"),
-        "F1 Score": f1_score(labels, predictions, average="binary"),
+        "Precision": precision_score(labels, predictions, average="weighted", zero_division=0),
+        "Recall": recall_score(labels, predictions, average="weighted", zero_division=0),
+        "F1 Score": f1_score(labels, predictions, average="weighted", zero_division=0),
     }
 
 
@@ -159,13 +189,22 @@ def main() -> None:
     """Run evaluation for all models."""
     args = parse_args()
 
-    texts, labels = load_sst2_validation(args.dataset, args.dataset_config, args.max_samples)
+    texts, labels = load_samples_from_dataset(
+        args.dataset,
+        args.dataset_config,
+        args.dataset_input_column,
+        args.dataset_split,
+        args.max_samples,
+        args.normalize_labels,
+    )
+
+    model_id = args.model_id
 
     tasks = {
-        "PyTorch Original": lambda: load_pytorch(is_quantized=False),
-        "PyTorch Quantized": lambda: load_pytorch(is_quantized=True),
-        "ONNX Runtime": lambda: load_onnx(is_quantized=False),
-        "ONNX Runtime Quantized": lambda: load_onnx(is_quantized=True),
+        "PyTorch Original": lambda: load_pytorch(is_quantized=False, model_id=model_id),
+        "PyTorch Quantized": lambda: load_pytorch(is_quantized=True, model_id=model_id),
+        "ONNX Runtime": lambda: load_onnx(is_quantized=False, model_id=model_id),
+        "ONNX Runtime Quantized": lambda: load_onnx(is_quantized=True, model_id=model_id),
     }
 
     results = [
