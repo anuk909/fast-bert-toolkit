@@ -18,31 +18,21 @@ This project demonstrates how to optimize transformer models using:
 - 📊 **Evaluation** - Validate accuracy on classification datasets
 - 📈 **Degradation Analysis** - Compare quantized models against the original
 
-## Project Structure
-
-```
-fast-bert/
-├── src/
-│   └── fast_bert/
-│       ├── __init__.py
-│       ├── config.py      # Shared configuration and utilities
-│       ├── benchmark.py   # Inference latency/throughput benchmarking
-│       ├── evaluate.py    # Model accuracy evaluation
-│       └── quantize.py    # Model quantization (PyTorch & ONNX)
-├── tests/
-├── models/                # Generated model outputs (gitignored)
-├── pyproject.toml
-└── README.md
-```
-
 ## Requirements
 
-- Python 3.11+
 - [uv](https://docs.astral.sh/uv/) package manager
 
 ## Setup
 
 ```bash
+# Clone the repository
+git clone git@github.com:anuk909/fast-bert.git
+cd fast-bert
+
+# Install uv (if not already installed)
+curl -LsSf https://astral.sh/uv/install.sh | sh
+
+# Install dependencies and setup project
 uv sync
 ```
 
