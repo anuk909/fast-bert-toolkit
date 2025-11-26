@@ -11,10 +11,9 @@ from optimum.onnxruntime import ORTModelForSequenceClassification
 from torchao.quantization import Int8DynamicActivationInt8WeightConfig, quantize_
 from transformers import AutoModelForSequenceClassification, AutoTokenizer
 
-# Model configuration
-MODELS_DIR = Path("models")
 
 # Directory and file names
+MODELS_DIR = Path("models")
 PYTORCH_DIR = "pytorch"
 PYTORCH_ORIGINAL_FILE = "model.safetensors"
 PYTORCH_QUANTIZED_FILE = "model_quantized.pth"
@@ -36,14 +35,22 @@ warnings.filterwarnings(
 )
 
 
+def get_models_dir(model_id: str) -> Path:
+    """Get the models directory based on model name extracted from HuggingFace model ID."""
+    return Path(MODELS_DIR / model_id.split("/")[-1])
+
+
 def get_file_size(path: Path) -> float:
     """Get file size in MB."""
     return path.stat().st_size / (1024 * 1024) if path.exists() else 0.0
 
 
-def load_pytorch(is_quantized: bool) -> tuple[AutoModelForSequenceClassification, AutoTokenizer, float] | None:
+def load_pytorch(
+    is_quantized: bool, model_id: str
+) -> tuple[AutoModelForSequenceClassification, AutoTokenizer, float] | None:
     """Load PyTorch model (original or quantized) from disk."""
-    model_dir = MODELS_DIR / PYTORCH_DIR
+    models_dir = get_models_dir(model_id)
+    model_dir = models_dir / PYTORCH_DIR
     if not model_dir.exists():
         return None
     
@@ -62,9 +69,12 @@ def load_pytorch(is_quantized: bool) -> tuple[AutoModelForSequenceClassification
     
     return model, tokenizer, get_file_size(weights_path)
 
-def load_onnx(is_quantized: bool) -> tuple[ORTModelForSequenceClassification, AutoTokenizer, float] | None:
+def load_onnx(
+    is_quantized: bool, model_id: str
+) -> tuple[ORTModelForSequenceClassification, AutoTokenizer, float] | None:
     """Load ONNX model (original or quantized) from disk."""
-    onnx_dir = MODELS_DIR / ONNX_DIR
+    models_dir = get_models_dir(model_id)
+    onnx_dir = models_dir / ONNX_DIR
     onnx_file = ONNX_QUANTIZED_FILE if is_quantized else ONNX_ORIGINAL_FILE
     onnx_path = onnx_dir / onnx_file
     if not onnx_path.exists():

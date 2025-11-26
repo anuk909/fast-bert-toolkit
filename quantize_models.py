@@ -7,7 +7,6 @@ from torchao.quantization import Int8DynamicActivationInt8WeightConfig, quantize
 from transformers import AutoModelForSequenceClassification, AutoTokenizer
 
 from config import (
-    MODELS_DIR,
     ONNX_DIR,
     ONNX_ORIGINAL_FILE,
     ONNX_QUANTIZED_FILE,
@@ -15,6 +14,7 @@ from config import (
     PYTORCH_QUANTIZED_FILE,
     PYTORCH_ORIGINAL_FILE,
     get_file_size,
+    get_models_dir,
 )
 
 def parse_args() -> argparse.Namespace:
@@ -25,7 +25,6 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument(
         "--model-id",
         type=str,
-        default="distilbert-base-uncased-finetuned-sst-2-english",
         help="HuggingFace model ID",
     )
     return parser.parse_args()
@@ -37,7 +36,8 @@ def create_pytorch_models(model_id: str) -> None:
     print("Creating PyTorch Models (Original & Quantized)")
     print("=" * 60)
 
-    pytorch_dir = MODELS_DIR / PYTORCH_DIR
+    models_dir = get_models_dir(model_id)
+    pytorch_dir = models_dir / PYTORCH_DIR
     pytorch_dir.mkdir(parents=True, exist_ok=True)
 
     # Load pre-trained model
@@ -77,7 +77,8 @@ def create_onnx_quantized(model_id: str) -> None:
     print("Creating ONNX Models (Original & Quantized)")
     print("=" * 60)
 
-    onnx_dir = MODELS_DIR / ONNX_DIR
+    models_dir = get_models_dir(model_id)
+    onnx_dir = models_dir / ONNX_DIR
     onnx_dir.mkdir(parents=True, exist_ok=True)
 
     # Export to ONNX
